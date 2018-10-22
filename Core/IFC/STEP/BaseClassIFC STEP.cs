@@ -17,19 +17,25 @@
 // SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using System;
-using System.Collections.Generic; 
+using System.Collections;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Text;
 using System.Reflection;
 using System.IO;
 using System.ComponentModel;
-using System.Linq;
-using System.Drawing;
-using GeometryGym.STEP;
 
+using GeometryGym.STEP;
 
 namespace GeometryGym.Ifc
 {
-	
-	
-
+	public partial class BaseClassIfc : STEPEntity, IBaseClassIfc
+	{
+		internal abstract void parse(string str, ref int pos, ReleaseVersion release, int len, ConcurrentDictionary<int,BaseClassIfc> dictionary);
+		protected override string BuildStringSTEP()
+		{
+			return BuildStringSTEP(mDatabase == null ? ReleaseVersion.IFC4A2 : mDatabase.Release);
+		}
+		protected virtual string BuildStringSTEP(ReleaseVersion release) { return ""; }
+	}
 }

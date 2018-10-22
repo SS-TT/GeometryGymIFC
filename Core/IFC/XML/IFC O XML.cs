@@ -47,7 +47,7 @@ namespace GeometryGym.Ifc
 					{
 						IfcRelDefinesByProperties rd = mDatabase.ParseXml<IfcRelDefinesByProperties>(node as XmlElement);
 						if (rd != null)
-							rd.AddRelated(this);
+							rd.RelatedObjects.Add(this);
 					}
 				}
 			}
@@ -81,7 +81,7 @@ namespace GeometryGym.Ifc
 					{
 						IfcRelAssigns ra = mDatabase.ParseXml<IfcRelAssigns>(node as XmlElement);
 						if (ra != null)
-							ra.AddRelated(this);
+							ra.RelatedObjects.Add(this);
 					}
 				}
 				else if (string.Compare(name, "IsNestedBy") == 0)
@@ -108,7 +108,7 @@ namespace GeometryGym.Ifc
 					{
 						IfcRelAssociates ra = mDatabase.ParseXml<IfcRelAssociates>(node as XmlElement);
 						if (ra != null)
-							ra.addRelated(this);
+							ra.RelatedObjects.Add(this);
 					}
 				}
 			}
@@ -254,7 +254,7 @@ namespace GeometryGym.Ifc
 					{
 						IfcActorRole role = mDatabase.ParseXml<IfcActorRole>(cn as XmlElement);
 						if (role != null)
-							AddRole(role);
+							Roles.Add(role);
 					}
 				}
 				else if (string.Compare(name, "Addresses") == 0)
@@ -263,7 +263,7 @@ namespace GeometryGym.Ifc
 					{
 						IfcAddress address = mDatabase.ParseXml<IfcAddress>(cn as XmlElement);
 						if (address != null)
-							AddAddress(address);
+							Addresses.Add(address);
 					}
 				}
 			}
@@ -312,9 +312,9 @@ namespace GeometryGym.Ifc
 			if (xml.HasAttribute("ChangeAction"))
 				Enum.TryParse<IfcChangeActionEnum>(xml.Attributes["ChangeAction"].Value,true, out mChangeAction);
 			if (xml.HasAttribute("LastModifiedDate"))
-				LastModifiedDate = int.Parse(xml.Attributes["LastModifiedDate"].Value);
+				mLastModifiedDate = int.Parse(xml.Attributes["LastModifiedDate"].Value);
 			if (xml.HasAttribute("CreationDate"))
-				CreationDate = int.Parse(xml.Attributes["CreationDate"].Value);
+				mCreationDate = int.Parse(xml.Attributes["CreationDate"].Value);
 		}
 		internal override void SetXML(XmlElement xml, BaseClassIfc host, Dictionary<int, XmlElement> processed)
 		{
@@ -322,14 +322,14 @@ namespace GeometryGym.Ifc
 			
 			xml.AppendChild(OwningUser.GetXML(xml.OwnerDocument, "OwningUser", this, processed));
 			xml.AppendChild(OwningApplication.GetXML(xml.OwnerDocument, "OwningApplication", this, processed));
-			if (mState != IfcStateEnum.NA)
+			if (mState != IfcStateEnum.NOTDEFINED)
 				xml.SetAttribute("State", mState.ToString().ToLower());
 			xml.SetAttribute("ChangeAction", mChangeAction.ToString().ToLower());
 			if (mLastModifiedDate > 0)
 				xml.SetAttribute("LastModifiedDate", mLastModifiedDate.ToString());
-			if(mLastModifyingUser > 0)
+			if(mLastModifyingUser != null)
 				xml.AppendChild(LastModifyingUser.GetXML(xml.OwnerDocument, "LastModifyingUser", this, processed));
-			if (mLastModifyingApplication > 0)
+			if (mLastModifyingApplication != null)
 				xml.AppendChild(LastModifyingApplication.GetXML(xml.OwnerDocument, "LastModifyingApplication", this, processed));
 			xml.SetAttribute("CreationDate", mCreationDate.ToString());
 		}

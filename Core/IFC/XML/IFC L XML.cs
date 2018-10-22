@@ -111,6 +111,24 @@ namespace GeometryGym.Ifc
 			xml.AppendChild(Dir.GetXML(xml.OwnerDocument, "Dir", this, processed));
 		}
 	}
+	public abstract partial class IfcLinearPositioningElement : IfcPositioningElement //IFC4.1
+	{
+		internal override void ParseXml(XmlElement xml)
+		{
+			base.ParseXml(xml);
+			foreach (XmlNode child in xml.ChildNodes)
+			{
+				string name = child.Name;
+				if (string.Compare(name, "Axis") == 0)
+					Axis = mDatabase.ParseXml<IfcCurve>(child as XmlElement);
+			}
+		}
+		internal override void SetXML(XmlElement xml, BaseClassIfc host, Dictionary<int, XmlElement> processed)
+		{
+			base.SetXML(xml, host, processed);
+			xml.AppendChild(Axis.GetXML(xml.OwnerDocument, "Axis", this, processed));
+		}
+	}
 	public partial class IfcLocalPlacement : IfcObjectPlacement
 	{
 		internal override void ParseXml(XmlElement xml)
@@ -129,9 +147,9 @@ namespace GeometryGym.Ifc
 		internal override void SetXML(XmlElement xml, BaseClassIfc host, Dictionary<int, XmlElement> processed)
 		{
 			base.SetXML(xml, host, processed);
-			if(mPlacementRelTo > 0)
-				xml.AppendChild(PlacementRelTo.GetXML(xml.OwnerDocument, "PlacementRelTo", this, processed));
-			xml.AppendChild(mDatabase[mRelativePlacement].GetXML(xml.OwnerDocument, "RelativePlacement", this, processed));
+			if(mPlacementRelTo != null)
+				xml.AppendChild(mPlacementRelTo.GetXML(xml.OwnerDocument, "PlacementRelTo", this, processed));
+			xml.AppendChild(mDatabase[mRelativePlacement.Index].GetXML(xml.OwnerDocument, "RelativePlacement", this, processed));
 		}
 	}
 	public partial class IfcLShapeProfileDef : IfcParameterizedProfileDef

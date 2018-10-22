@@ -56,6 +56,7 @@ namespace GeometryGym.Ifc
 			{
 				ParseXml<IBaseClassIfc>( node as XmlElement);
 			}
+			postImport();
 		}
 		Dictionary<string, BaseClassIfc> mParsed = new Dictionary<string, BaseClassIfc>();
 		//internal BaseClassIfc ParseXml(XmlElement xml)
@@ -177,8 +178,8 @@ null, Type.EmptyTypes, null);
 			
 			return default(T);
 		}
-		internal string mXmlNamespace = "http://www.buildingsmart-tech.org/ifcXML/IFC4_ADD1";
-		internal string mXmlSchema = "http://www.buildingsmart-tech.org/ifcXML/IFC4/Add1/IFC4_ADD1.xsd";
+		internal string mXmlNamespace = "http://www.buildingsmart-tech.org/ifcXML/IFC4_ADD2";
+		internal string mXmlSchema = "http://www.buildingsmart-tech.org/ifc/IFC4/Add2/IFC4_ADD2.xsd";
 		internal string mXsiNamespace = "http://www.w3.org/2001/XMLSchema-instance";
 		public bool WriteXMLFile(string filename)
 		{
@@ -200,13 +201,24 @@ null, Type.EmptyTypes, null);
 			ns.Value = mXmlNamespace;
 			el.SetAttribute("xlmns", mXmlNamespace);
 
-			XmlElement element = Context.GetXML(doc, "",null, new Dictionary<int, XmlElement>());
-			el.AppendChild(element);
+			Dictionary<int, XmlElement> processed = new Dictionary<int, XmlElement>();
+			IfcContext context = Context;
+			if(context != null)
+				el.AppendChild(Context.GetXML(doc, "", null, processed));
+
+			if (context == null || (context.mIsDecomposedBy.Count == 0 && context.Declares.Count == 0))
+			{
+				foreach (BaseClassIfc e in this)
+				{
+					if (!processed.ContainsKey(e.Index))
+						el.AppendChild(e.GetXML(doc, "", null, processed));
+				}
+			}
 
 			XmlTextWriter writer;
 			try
 			{
-				writer = new XmlTextWriter(filename,Encoding.Default);
+				writer = new XmlTextWriter(filename,Encoding.UTF8);
 				writer.Formatting = Formatting.Indented;
 				try
 				{

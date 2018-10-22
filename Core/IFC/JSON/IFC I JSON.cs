@@ -64,10 +64,10 @@ namespace GeometryGym.Ifc
 			if (token != null)
 				Enum.TryParse<IfcLogicalEnum>(token.Value<string>(), true, out mSelfIntersect);
 		}
-		protected override void setJSON(JObject obj, BaseClassIfc host, HashSet<int> processed)
+		protected override void setJSON(JObject obj, BaseClassIfc host, SetJsonOptions options)
 		{
-			base.setJSON(obj, host, processed);
-			obj["Points"] = Points.getJson(this, processed);
+			base.setJSON(obj, host, options);
+			obj["Points"] = Points.getJson(this, options);
 			if (mSegments.Count > 0)
 			{
 				JArray array = new JArray();
@@ -120,18 +120,19 @@ namespace GeometryGym.Ifc
 			if (token != null)
 				double.TryParse(token.Value<string>(), out mFlangeSlope);
 		}
-		protected override void setJSON(JObject obj, BaseClassIfc host, HashSet<int> processed)
+		protected override void setJSON(JObject obj, BaseClassIfc host, SetJsonOptions options)
 		{
-			base.setJSON(obj, host, processed);
-			obj["OverallWidth"] = mOverallWidth;
-			obj["OverallDepth"] = mOverallDepth;
-			obj["WebThickness"] = mWebThickness;
-			obj["FlangeThickness"] = mFlangeThickness;
-			if (!double.IsNaN(mFilletRadius))
-				obj["FilletRadius"] = mFilletRadius;
-			if (!double.IsNaN(mFlangeEdgeRadius))
-				obj["FlangeEdgeRadius"] = mFlangeEdgeRadius;
-			if (!double.IsNaN(mFlangeSlope))
+			int digits = mDatabase == null ? 4 : mDatabase.mLengthDigits;
+			base.setJSON(obj, host, options);
+			obj["OverallWidth"] = Math.Round(mOverallWidth, digits);
+			obj["OverallDepth"] = Math.Round(mOverallDepth, digits);
+			obj["WebThickness"] = Math.Round(mWebThickness, digits);
+			obj["FlangeThickness"] = Math.Round(mFlangeThickness, digits);
+			if (!double.IsNaN(mFilletRadius) && mFilletRadius > 0)
+				obj["FilletRadius"] = Math.Round(mFilletRadius, digits);
+			if (!double.IsNaN(mFlangeEdgeRadius) && mFlangeEdgeRadius > 0)
+				obj["FlangeEdgeRadius"] = Math.Round(mFlangeEdgeRadius, digits);
+			if (!double.IsNaN(mFlangeSlope) && mFlangeSlope > 0)
 				obj["FlangeSlope"] = mFlangeSlope;
 		}
 	}

@@ -35,7 +35,7 @@ namespace GeometryGym.Ifc
 		{
 			base.ParseXml(xml);
 			if (xml.HasAttribute("PredefinedType"))
-				Enum.TryParse<IfcBeamTypeEnum>(xml.Attributes["PredefinedType"].Value,true, out mPredefinedType);
+				Enum.TryParse<IfcBeamTypeEnum>(xml.Attributes["PredefinedType"].Value, true, out mPredefinedType);
 		}
 		internal override void SetXML(XmlElement xml, BaseClassIfc host, Dictionary<int, XmlElement> processed)
 		{
@@ -50,7 +50,7 @@ namespace GeometryGym.Ifc
 		{
 			base.ParseXml(xml);
 			if (xml.HasAttribute("PredefinedType"))
-				Enum.TryParse<IfcBeamTypeEnum>(xml.Attributes["PredefinedType"].Value,true, out mPredefinedType);
+				Enum.TryParse<IfcBeamTypeEnum>(xml.Attributes["PredefinedType"].Value, true, out mPredefinedType);
 		}
 		internal override void SetXML(XmlElement xml, BaseClassIfc host, Dictionary<int, XmlElement> processed)
 		{
@@ -130,15 +130,22 @@ namespace GeometryGym.Ifc
 			xml.SetAttribute("ZDim", mZDim.ToString());
 		}
 	}
-	public partial class IfcBuilding : IfcSpatialStructureElement
+	public abstract partial class IfcBSplineSurface : IfcBoundedSurface
+	{
+		//internal override void SetXML(XmlElement xml, BaseClassIfc host, Dictionary<int, XmlElement> processed)
+		//{
+		//	base.SetXML(xml, host, processed);
+		//	xml.AppendChild(Corner.GetXML(xml.OwnerDocument, "Corner", this, processed));
+		//	xml.SetAttribute("XDim", mXDim.ToString());
+		//	xml.SetAttribute("YDim", mYDim.ToString());
+		//	xml.SetAttribute("ZDim", mZDim.ToString());
+		//}
+	}
+	public partial class IfcBuilding : IfcFacility
 	{
 		internal override void ParseXml(XmlElement xml)
 		{
 			base.ParseXml(xml);
-			if (xml.HasAttribute("ElevationOfRefHeight"))
-				ElevationOfRefHeight = double.Parse(xml.Attributes["ElevationOfRefHeight"].Value);
-			if (xml.HasAttribute("ElevationOfTerrain"))
-				ElevationOfTerrain = double.Parse(xml.Attributes["ElevationOfTerrain"].Value);
 			foreach (XmlNode child in xml.ChildNodes)
 			{
 				string name = child.Name;
@@ -149,11 +156,7 @@ namespace GeometryGym.Ifc
 		internal override void SetXML(XmlElement xml, BaseClassIfc host, Dictionary<int, XmlElement> processed)
 		{
 			base.SetXML(xml, host, processed);
-			if (!double.IsNaN(mElevationOfRefHeight))
-				xml.SetAttribute("ElevationOfRefHeight", mElevationOfRefHeight.ToString());
-			if (!double.IsNaN(mElevationOfTerrain))
-				xml.SetAttribute("ElevationOfTerrain", mElevationOfTerrain.ToString());
-			if (mBuildingAddress > 0)
+			if (mBuildingAddress != null) 
 				xml.AppendChild(BuildingAddress.GetXML(xml.OwnerDocument, "BuildingAddress", this, processed));
 		}
 	}
@@ -172,7 +175,7 @@ namespace GeometryGym.Ifc
 			base.SetXML(xml, host, processed);
 			if (mPredefinedType != IfcBuildingElementProxyTypeEnum.NOTDEFINED)
 			{
-				if(mDatabase.Release == ReleaseVersion.IFC2x3)
+				if(mDatabase.Release < ReleaseVersion.IFC4)
 				{
 					if (mPredefinedType == IfcBuildingElementProxyTypeEnum.COMPLEX || mPredefinedType == IfcBuildingElementProxyTypeEnum.ELEMENT || mPredefinedType == IfcBuildingElementProxyTypeEnum.PARTIAL)
 						xml.SetAttribute("CompositionType", mPredefinedType.ToString().ToLower());
@@ -197,7 +200,7 @@ namespace GeometryGym.Ifc
 				xml.SetAttribute("PredefinedType", mPredefinedType.ToString().ToLower());
 		}
 	}
-	public partial class IfcBuildingStorey : IfcSpatialStructureElement
+	public partial class IfcBuildingStorey : IfcFacilityPart
 	{
 		internal override void ParseXml(XmlElement xml)
 		{

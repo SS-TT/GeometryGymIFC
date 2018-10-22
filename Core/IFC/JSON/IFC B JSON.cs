@@ -28,11 +28,43 @@ using Newtonsoft.Json.Linq;
 
 namespace GeometryGym.Ifc
 {
+	public partial class IfcBeam : IfcBuildingElement
+	{
+		internal override void parseJObject(JObject obj)
+		{
+			base.parseJObject(obj);
+			JToken token = obj.GetValue("PredefinedType", StringComparison.InvariantCultureIgnoreCase);
+			if (token != null)
+				Enum.TryParse<IfcBeamTypeEnum>(token.Value<string>(), true, out mPredefinedType);
+		}
+		protected override void setJSON(JObject obj, BaseClassIfc host, SetJsonOptions options)
+		{
+			base.setJSON(obj, host, options);
+			if (mPredefinedType != IfcBeamTypeEnum.NOTDEFINED)
+				obj["PredefinedType"] = mPredefinedType.ToString();
+		}
+	}
+	public partial class IfcBeamType : IfcBuildingElementType
+	{
+		internal override void parseJObject(JObject obj)
+		{
+			base.parseJObject(obj);
+			JToken token = obj.GetValue("PredefinedType", StringComparison.InvariantCultureIgnoreCase);
+			if (token != null)
+				Enum.TryParse<IfcBeamTypeEnum>(token.Value<string>(), true, out mPredefinedType);
+		}
+		protected override void setJSON(JObject obj, BaseClassIfc host, SetJsonOptions options)
+		{
+			base.setJSON(obj, host, options);
+			if (mPredefinedType != IfcBeamTypeEnum.NOTDEFINED)
+				obj["PredefinedType"] = mPredefinedType.ToString();
+		}
+	}
 	public partial class IfcBlock : IfcCsgPrimitive3D
 	{
-		protected override void setJSON(JObject obj, BaseClassIfc host, HashSet<int> processed)
+		protected override void setJSON(JObject obj, BaseClassIfc host, SetJsonOptions options)
 		{
-			base.setJSON(obj, host, processed);
+			base.setJSON(obj, host, options);
 			obj["XLength"] = XLength.ToString();
 			obj["YLength"] = YLength.ToString();
 			obj["ZLength"] = ZLength.ToString();
@@ -47,9 +79,9 @@ namespace GeometryGym.Ifc
 			if (token != null)
 				Enum.TryParse<IfcBoilerTypeEnum>(token.Value<string>(), true, out mPredefinedType);
 		}
-		protected override void setJSON(JObject obj, BaseClassIfc host, HashSet<int> processed)
+		protected override void setJSON(JObject obj, BaseClassIfc host, SetJsonOptions options)
 		{
-			base.setJSON(obj, host, processed);
+			base.setJSON(obj, host, options);
 			if (mPredefinedType != IfcBoilerTypeEnum.NOTDEFINED)
 				obj["PredefinedType"] = mPredefinedType.ToString();
 		}
@@ -63,9 +95,9 @@ namespace GeometryGym.Ifc
 			if (token != null)
 				Enum.TryParse<IfcBoilerTypeEnum>(token.Value<string>(), true, out mPredefinedType);
 		}
-		protected override void setJSON(JObject obj, BaseClassIfc host, HashSet<int> processed)
+		protected override void setJSON(JObject obj, BaseClassIfc host, SetJsonOptions options)
 		{
-			base.setJSON(obj, host, processed);
+			base.setJSON(obj, host, options);
 			if (mPredefinedType != IfcBoilerTypeEnum.NOTDEFINED)
 				obj["PredefinedType"] = mPredefinedType.ToString();
 		}
@@ -85,12 +117,12 @@ namespace GeometryGym.Ifc
 			if (jobj != null)
 				SecondOperand = mDatabase.parseJObject<IfcBooleanOperand>(jobj);
 		}
-		protected override void setJSON(JObject obj, BaseClassIfc host, HashSet<int> processed)
+		protected override void setJSON(JObject obj, BaseClassIfc host, SetJsonOptions options)
 		{
-			base.setJSON(obj, host, processed);
+			base.setJSON(obj, host, options);
 			obj["Operator"] = mOperator.ToString();
-			obj["FirstOperand"] = mDatabase[mFirstOperand].getJson(this, processed);
-			obj["SecondOperand"] = mDatabase[mSecondOperand].getJson(this, processed);
+			obj["FirstOperand"] = mDatabase[mFirstOperand].getJson(this, options);
+			obj["SecondOperand"] = mDatabase[mSecondOperand].getJson(this, options);
 		}
 	}
 	public abstract partial class IfcBoundaryCondition : BaseClassIfc //ABSTRACT SUPERTYPE OF (ONEOF (IfcBoundaryEdgeCondition ,IfcBoundaryFaceCondition ,IfcBoundaryNodeCondition));
@@ -103,9 +135,9 @@ namespace GeometryGym.Ifc
 			if (token != null)
 				Name = token.Value<string>();
 		}
-		protected override void setJSON(JObject obj, BaseClassIfc host, HashSet<int> processed)
+		protected override void setJSON(JObject obj, BaseClassIfc host, SetJsonOptions options)
 		{
-			base.setJSON(obj, host, processed);
+			base.setJSON(obj, host, options);
 			base.setAttribute(obj, "Name", Name);
 		}
 	}
@@ -152,10 +184,10 @@ namespace GeometryGym.Ifc
 			if (jobj != null)
 				mRotationalStiffnessZ = IfcRotationalStiffnessSelect.parseJObject(jobj);
 		}
-		protected override void setJSON(JObject obj, BaseClassIfc host, HashSet<int> processed)
+		protected override void setJSON(JObject obj, BaseClassIfc host, SetJsonOptions options)
 		{
-			base.setJSON(obj, host, processed);
-			if (mDatabase.Release == ReleaseVersion.IFC2x3)
+			base.setJSON(obj, host, options);
+			if (mDatabase.Release < ReleaseVersion.IFC4)
 			{
 				if (mTranslationalStiffnessX != null)
 					obj["LinearStiffnessX"] = (mTranslationalStiffnessX.mStiffness == null ? (mTranslationalStiffnessX.Rigid ? -1 : 0) : mTranslationalStiffnessX.mStiffness.Measure);
@@ -184,19 +216,18 @@ namespace GeometryGym.Ifc
 					obj["RotationalStiffnessY"] = mRotationalStiffnessY.getJObject();
 				if (mTranslationalStiffnessZ != null)
 					obj["RotationalStiffnessZ"] = mRotationalStiffnessZ.getJObject();
-
 			}
 		}
 	}
 	public abstract partial class IfcBSplineCurve : IfcBoundedCurve //SUPERTYPE OF(IfcBSplineCurveWithKnots)
 	{
-		protected override void setJSON(JObject obj, BaseClassIfc host,  HashSet<int> processed)
+		protected override void setJSON(JObject obj, BaseClassIfc host, SetJsonOptions options)
 		{
-			base.setJSON(obj, host, processed);
+			base.setJSON(obj, host, options);
 			obj["Degree"] = Degree;
 			JArray array = new JArray();
 			foreach (IfcCartesianPoint point in ControlPointsList)
-				array.Add(point.getJson(this, processed));
+				array.Add(point.getJson(this, options));
 			obj["ControlPointsList"] = array;
 			obj["CurveForm"] = CurveForm.ToString();
 			obj["ClosedCurve"] = ClosedCurve.ToString();
@@ -205,9 +236,9 @@ namespace GeometryGym.Ifc
 	}
 	public partial class IfcBSplineCurveWithKnots : IfcBSplineCurve
 	{
-		protected override void setJSON(JObject obj, BaseClassIfc host,  HashSet<int> processed)
+		protected override void setJSON(JObject obj, BaseClassIfc host, SetJsonOptions options)
 		{
-			base.setJSON(obj, host, processed);
+			base.setJSON(obj, host, options);
 			JArray array = new JArray();
 			foreach (int i in mMultiplicities)
 				array.Add(i);
@@ -219,33 +250,23 @@ namespace GeometryGym.Ifc
 			obj["KnotSpec"] = mKnotSpec.ToString();
 		}
 	}
-	public partial class IfcBuilding : IfcSpatialStructureElement
+	public partial class IfcBuilding : IfcFacility
 	{
 		internal override void parseJObject(JObject obj)
 		{
 			base.parseJObject(obj);
-			JToken token = obj.GetValue("ElevationOfRefHeight", StringComparison.InvariantCultureIgnoreCase);
-			if (token != null)
-				ElevationOfRefHeight = token.Value<double>();
-			token = obj.GetValue("ElevationOfTerrain", StringComparison.InvariantCultureIgnoreCase);
-			if (token != null)
-				ElevationOfTerrain = token.Value<double>();
 			JObject jobj = obj.GetValue("BuildingAddress", StringComparison.InvariantCultureIgnoreCase) as JObject;
 			if (jobj != null)
 				BuildingAddress = mDatabase.parseJObject<IfcPostalAddress>(jobj);
 		}
-		protected override void setJSON(JObject obj, BaseClassIfc host,  HashSet<int> processed)
+		protected override void setJSON(JObject obj, BaseClassIfc host, SetJsonOptions options)
 		{
-			base.setJSON(obj, host, processed);
-			if (!double.IsNaN(mElevationOfRefHeight))
-				obj["ElevationOfRefHeight"] = ElevationOfRefHeight.ToString();
-			if (!double.IsNaN(mElevationOfTerrain))
-				obj["ElevationOfTerrain"] = ElevationOfTerrain.ToString();
-			if (mBuildingAddress > 0)
-				obj["BuildingAddress"] = BuildingAddress.getJson(this, processed);
+			base.setJSON(obj, host, options);
+			if (mBuildingAddress != null) 
+				obj["BuildingAddress"] = BuildingAddress.getJson(this, options);
 		}
 	}
-	public partial class IfcBuildingStorey : IfcSpatialStructureElement
+	public partial class IfcBuildingStorey : IfcFacilityPart
 	{
 		internal override void parseJObject(JObject obj)
 		{
@@ -254,9 +275,9 @@ namespace GeometryGym.Ifc
 			if (token != null)
 				Elevation = token.Value<double>();
 		}
-		protected override void setJSON(JObject obj, BaseClassIfc host,  HashSet<int> processed)
+		protected override void setJSON(JObject obj, BaseClassIfc host, SetJsonOptions options)
 		{
-			base.setJSON(obj, host, processed);
+			base.setJSON(obj, host, options);
 			if (!double.IsNaN(mElevation))
 				obj["Elevation"] = Elevation.ToString();
 		}

@@ -35,6 +35,36 @@ namespace GeometryGym.Ifc
 		//internal List<int> mCrossSections = new List<int>();// : LIST [2:?] OF IfcProfileDef;
 		//internal List<int> mCrossSectionPositions = new List<int>();// : LIST [2:?] OF IfcAxis2Placement3D; 
 	}
+
+	public partial class IfcSectionProperties : IfcPreDefinedProperties // IFC2x3 BaseClassIfc
+	{
+		internal override void SetXML(XmlElement xml, BaseClassIfc host, Dictionary<int, XmlElement> processed)
+		{
+			base.SetXML(xml, host, processed);
+			xml.SetAttribute("SectionType", mSectionType.ToString().ToLower());
+			xml.AppendChild(StartProfile.GetXML(xml.OwnerDocument, "StartProfile", this, processed));
+			if(mEndProfile > 0)
+				xml.AppendChild(EndProfile.GetXML(xml.OwnerDocument, "EndProfile", this, processed));
+		}
+	}
+	public partial class IfcSectionReinforcementProperties : IfcPreDefinedProperties // IFC2x3 STPEntity
+	{
+		internal override void SetXML(XmlElement xml, BaseClassIfc host, Dictionary<int, XmlElement> processed)
+		{
+			base.SetXML(xml, host, processed);
+			xml.SetAttribute("LongitudinalStartPosition", mLongitudinalStartPosition.ToString());
+			xml.SetAttribute("LongitudinalEndPosition", mLongitudinalEndPosition.ToString());
+			if(!double.IsNaN(mTransversePosition))
+				xml.SetAttribute("TransversePosition", mTransversePosition.ToString());
+			if(mReinforcementRole != IfcReinforcingBarRoleEnum.NOTDEFINED)
+				xml.SetAttribute("ReinforcementRole", mReinforcementRole.ToString().ToLower());
+			xml.AppendChild(SectionDefinition.GetXML(xml.OwnerDocument, "SectionDefinition", this, processed));
+			XmlElement element = xml.OwnerDocument.CreateElement("CrossSectionReinforcementDefinitions");
+			xml.AppendChild(element);
+			foreach (IfcReinforcementBarProperties p in CrossSectionReinforcementDefinitions)
+				element.AppendChild(p.GetXML(xml.OwnerDocument, "", this, processed));
+		}
+	}
 	public partial class IfcShapeAspect : BaseClassIfc
 	{
 		internal override void ParseXml(XmlElement xml)
@@ -118,7 +148,12 @@ namespace GeometryGym.Ifc
 			{
 				string name = child.Name;
 				if (string.Compare(name, "Enumerators") == 0)
-					Enumerators = mDatabase.ParseXml<IfcPropertyEnumeration>(child as XmlElement);
+				{
+					if(child.HasChildNodes)
+						Enumerators = mDatabase.ParseXml<IfcPropertyEnumeration>(child.ChildNodes[0] as XmlElement);
+					else
+						Enumerators = mDatabase.ParseXml<IfcPropertyEnumeration>(child as XmlElement);
+				}
 				else if (string.Compare(name, "PrimaryUnit") == 0)
 					PrimaryUnit = mDatabase.ParseXml<IfcUnit>(child as XmlElement);
 				else if (string.Compare(name, "SecondaryUnit") == 0)
@@ -142,7 +177,7 @@ namespace GeometryGym.Ifc
 			if (mSecondaryUnit > 0)
 				xml.AppendChild(mDatabase[mSecondaryUnit].GetXML(xml.OwnerDocument, "SecondaryUnit", this, processed));
 			setAttribute(xml, "Expression", Expression);
-			if (mAccessState != IfcStateEnum.NA)
+			if (mAccessState != IfcStateEnum.NOTDEFINED)
 				xml.SetAttribute("AccessState", mAccessState.ToString().ToLower());
 		}
 	}
@@ -240,7 +275,7 @@ namespace GeometryGym.Ifc
 		internal override void SetXML(XmlElement xml, BaseClassIfc host, Dictionary<int, XmlElement> processed)
 		{
 			base.SetXML(xml, host, processed);
-			if (mDatabase.mRelease == ReleaseVersion.IFC2x3)
+			if (mDatabase.mRelease < ReleaseVersion.IFC4)
 				xml.SetAttribute("InteriorOrExteriorSpace", mPredefinedType == IfcSpaceTypeEnum.INTERNAL || mPredefinedType == IfcSpaceTypeEnum.EXTERNAL ? mPredefinedType.ToString().ToLower() : "notdefined");
 			else if (mPredefinedType != IfcSpaceTypeEnum.NOTDEFINED)
 				xml.SetAttribute("PredefinedType", mPredefinedType.ToString().ToLower());
@@ -347,7 +382,7 @@ namespace GeometryGym.Ifc
 			base.SetXML(xml, host, processed);
 			if (mDestabilizingLoad == IfcLogicalEnum.UNKNOWN)
 			{
-				if (mDatabase.Release == ReleaseVersion.IFC2x3)
+				if (mDatabase.Release < ReleaseVersion.IFC4)
 					xml.SetAttribute("DestabilizingLoad", "false");
 			}
 			else

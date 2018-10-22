@@ -74,7 +74,7 @@ namespace GeometryGym.Ifc
 					{
 						IfcUnit u = mDatabase.ParseXml<IfcUnit>(cn as XmlElement);
 						if (u != null)
-							AddUnit(u);
+							Units.Add(u);
 					}
 				}
 			}
@@ -121,7 +121,7 @@ namespace GeometryGym.Ifc
 				xml.SetAttribute("EdgeRadius", mEdgeRadius.ToString());
 			if (!double.IsNaN(mFlangeSlope))
 				xml.SetAttribute("FlangeSlope", mFlangeSlope.ToString());
-			if (mDatabase.Release == ReleaseVersion.IFC2x3 && !double.IsNaN(mCentreOfGravityInX))
+			if (mDatabase.Release < ReleaseVersion.IFC4 && !double.IsNaN(mCentreOfGravityInX))
 				xml.SetAttribute("CentreOfGravityInX", mCentreOfGravityInX.ToString());
 		}
 	}

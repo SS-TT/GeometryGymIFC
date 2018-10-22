@@ -47,6 +47,9 @@ namespace GeometryGym.Ifc
 			string str = reader.ReadToEnd();
 			ReadJSON(JObject.Parse(str));
 
+			if (mContext != null)
+				mContext.initializeUnitsAndScales();
+
 			Thread.CurrentThread.CurrentCulture = current;
 			postImport();
 			Factory.Options.GenerateOwnerHistory = ownerHistory;
@@ -54,20 +57,22 @@ namespace GeometryGym.Ifc
 
 		internal int mNextUnassigned = 0;
 
-		public void ReadJSON(JObject ifcFile)
-		{ 
+		public List<IBaseClassIfc> ReadJSON(JObject ifcFile)
+		{
+			List<IBaseClassIfc> result = new List<IBaseClassIfc>();
 			JToken token = ifcFile.First;
 			token = ifcFile["HEADER"];
 			token = ifcFile["DATA"];
 			JArray array = token as JArray;
 			if (array != null)
-				extractJArray<IBaseClassIfc>(array);	
+				result = extractJArray<IBaseClassIfc>(array);
 			else
 			{
-				parseJObject<IBaseClassIfc>(ifcFile);	
+				IBaseClassIfc obj = parseJObject<IBaseClassIfc>(ifcFile);
+				if (obj != null)
+					result.Add(obj);
 			}
-			if(mContext != null)
-				mContext.initializeUnitsAndScales();
+			return result;
 		}
 		internal List<T> extractJArray<T>(JArray array) where T : IBaseClassIfc 
 		{
@@ -94,59 +99,128 @@ namespace GeometryGym.Ifc
 		{
 			if (obj == null)
 				return default(T);
+			BaseClassIfc result = null;
 			JToken token = obj.GetValue("href", StringComparison.InvariantCultureIgnoreCase);
 			if(token != null)
 			{
-				int index = token.Value<int>();
-				try
+				if (token.Type == JTokenType.Integer)
 				{
-					return (T)(IBaseClassIfc)this[index];
+					int index = token.Value<int>();
+					result = this[index];
 				}
-				catch(Exception) { }
-				return default(T);
+				else if (token.Type == JTokenType.String)
+				{
+					mDictionary.TryGetValue(token.Value<string>(), out result);
+				}
+				if (result != null && obj.Count == 1)
+					return (T)(IBaseClassIfc)result;
 			}
-			Type type = null;
-			token = obj.GetValue("type", StringComparison.InvariantCultureIgnoreCase);
-			if (token != null)
+			if (result == null)
 			{
-				string keyword = token.Value<string>();
-				type = Type.GetType("GeometryGym.Ifc." + keyword, false, true);
-			}
-			if (token == null)
-				type = typeof(T);
-			if (type != null)
-			{
-				ConstructorInfo constructor = type.GetConstructor(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
-null, Type.EmptyTypes, null);
-				if (constructor != null)
-				{ 
-					BaseClassIfc entity = constructor.Invoke(new object[] { }) as BaseClassIfc;
-					if (entity != null)
+				Type type = null;
+				token = obj.GetValue("type", StringComparison.InvariantCultureIgnoreCase);
+				if (token != null)
+				{
+					string keyword = token.Value<string>();
+					type = Type.GetType("GeometryGym.Ifc." + keyword, false, true);
+				}
+				if (token == null)
+					type = typeof(T);
+				if (type != null && !type.IsAbstract)
+				{
+					ConstructorInfo constructor = type.GetConstructor(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+	null, Type.EmptyTypes, null);
+					if (constructor != null)
 					{
-						token = obj.GetValue("id", StringComparison.InvariantCultureIgnoreCase);
-						int index = 0;// (int) (this.mIfcObjects.Count * 1.2); 
-						if (token != null)
+						result  = constructor.Invoke(new object[] { }) as BaseClassIfc;
+						if (result != null)
 						{
-							int i = token.Value<int>();
-							if (this[i] == null)
-								index = i;
-							// TODO merge if existing equivalent
+							result.mDatabase = this;
+							token = obj.GetValue("id", StringComparison.InvariantCultureIgnoreCase);
+							int index = 0;// (int) (this.mIfcObjects.Count * 1.2); 
+							if (token != null)
+							{
+								if (token.Type == JTokenType.Integer)
+								{
+									try
+									{
+										int i = token.Value<int>();
+										if (this[i] == null)
+											index = i;
+									}
+									catch (Exception) { }
+									// TODO merge if existing equivalent
+								}
+								else if(token.Type == JTokenType.String)
+								{
+									result.mGlobalId = token.Value<string>();
+									mDictionary.TryAdd(result.mGlobalId, result);
+								}
+							}
+							IfcCartesianPoint point = result as IfcCartesianPoint;
+							IfcDirection direction = result as IfcDirection;
+							IfcAxis2Placement3D placement = result as IfcAxis2Placement3D;
+							if (index == 0)
+							{
+								if (point != null)
+								{
+									point.parseJObject(obj);
+									if (point.isOrigin)
+									{
+										if (point.is2D)
+											return (T)(IBaseClassIfc)Factory.Origin2d;
+										return (T)(IBaseClassIfc)Factory.Origin;
+									}
+								}
+								else
+								{
+									if (direction != null)
+									{
+										direction.parseJObject(obj);
+										if (!direction.is2D)
+										{
+											if (direction.isXAxis)
+												return (T)(IBaseClassIfc)Factory.XAxis;
+											if (direction.isYAxis)
+												return (T)(IBaseClassIfc)Factory.YAxis;
+											if (direction.isZAxis)
+												return (T)(IBaseClassIfc)Factory.ZAxis;
+											if (direction.isXAxisNegative)
+												return (T)(IBaseClassIfc)Factory.XAxisNegative;
+											if (direction.isYAxisNegative)
+												return (T)(IBaseClassIfc)Factory.YAxisNegative;
+											if (direction.isZAxisNegative)
+												return (T)(IBaseClassIfc)Factory.ZAxisNegative;
+										}
+									}
+									if (placement != null)
+									{
+										placement.parseJObject(obj);
+										if (placement.IsXYPlane)
+											return (T)(IBaseClassIfc)Factory.XYPlanePlacement;
+									}
+								}
+							
+								if (mNextUnassigned == 0)
+									mNextUnassigned = Math.Max(LastKey * 2, 1000);
+								index = mNextUnassigned++;
+								this[index] = result;
+
+								if (point != null || direction != null || placement != null)
+									return (T)(IBaseClassIfc)result;
+							}
+							else
+								this[index] = result;
+							
 						}
-						if(index == 0)
-						{
-							if(mNextUnassigned == 0)
-								mNextUnassigned = Math.Max(LastKey * 2, 1000);
-							index = mNextUnassigned++;
-						}
-						this[index] = entity;
-						entity.parseJObject(obj);
-						parseBespoke(entity, obj);	
-						return (T)(IBaseClassIfc) entity;
 					}
 				}
-				
 			}
-			return default(T);
+			if(result == null)
+				return default(T);
+			result.parseJObject(obj);
+			parseBespoke(result, obj);
+			return (T)(IBaseClassIfc)result;
 		}
 
 		partial void parseBespoke(BaseClassIfc entity, JObject jObject);
@@ -177,16 +251,42 @@ null, Type.EmptyTypes, null);
 			header["FILE_SCHEMA"] = fileSchema;
 			ifcFile["HEADER"] = header;
 
-			IfcContext context = this.mContext;
-			JObject jcontext = context.getJson(null, new HashSet<int>()); //null);//
-
 			JArray data = new JArray();
-			data.Add(jcontext);
+			IfcContext context = this.mContext;
+			BaseClassIfc.SetJsonOptions options = new BaseClassIfc.SetJsonOptions() { LengthDigitCount = mLengthDigits, Version = this.Release };
+			if (context != null)
+			{
+				JObject jcontext = context.getJson(null, options); //null);//
+				data.Add(jcontext);
+			}
+			if(context == null || (context.mIsDecomposedBy.Count == 0 && context.Declares.Count == 0))
+			{
+				foreach (BaseClassIfc e in this)
+				{
+					if (!string.IsNullOrEmpty(e.mGlobalId))
+					{
+						if (!options.Encountered.Contains(e.mGlobalId))
+							data.Add(e.getJson(null, options));
+					}
+					else
+					{
+						NamedObjectIfc named = e as NamedObjectIfc;
+						if (named != null)
+						{
+							data.Add(named.getJson(null, options));
+						}
+					}
+				}
+			}
 			ifcFile["DATA"] = data;
 			if (!string.IsNullOrEmpty(filename))
 			{
 				StreamWriter sw = new StreamWriter(filename);
+#if(DEBUG)
 				sw.Write(ifcFile.ToString());
+#else
+				sw.Write(ifcFile.ToString(Newtonsoft.Json.Formatting.None, new Newtonsoft.Json.JsonConverter[0]));
+#endif
 				sw.Close();
 			}
 			Thread.CurrentThread.CurrentUICulture = current;
@@ -197,7 +297,7 @@ null, Type.EmptyTypes, null);
 		internal static JObject extract(IfcValue value)
 		{
 			JObject result = new JObject();
-			result[value.GetType().Name] = value.Value.ToString();
+			result[value.GetType().Name] = value.ValueString;
 			return result;
 		}
 		internal static IfcValue ParseValue(JObject obj)
@@ -205,8 +305,40 @@ null, Type.EmptyTypes, null);
 			JProperty token = (JProperty) obj.First;
 			return ParserIfc.extractValue(token.Name, token.Value.ToString());
 		}
+
 	}
 
+	public static class JsonIFCExtensions
+	{
+		public static void StripToEssentialIFC(this JToken containerToken)
+		{
+			HashSet<string> toStrip = new HashSet<string>();
+			toStrip.Add("globalid");
+			stripEssential(containerToken, toStrip);
+		}
+		private static void stripEssential(JToken containerToken, HashSet<string> toStrip)
+		{
+			if (containerToken.Type == JTokenType.Object)
+			{
+				List<JProperty> children = containerToken.Children<JProperty>().ToList();
+				foreach (JProperty child in children)
+				{
+					if (toStrip.Contains(child.Name.ToLower()))
+					{
+						child.Remove();
+					}
+					stripEssential(child.Value, toStrip);
+				}
+			}
+			else if (containerToken.Type == JTokenType.Array)
+			{
+				foreach (JToken child in containerToken.Children())
+				{
+					stripEssential(child, toStrip);
+				}
+			}
+		}
+	}
 }
 
  
